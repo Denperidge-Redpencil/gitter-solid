@@ -21,6 +21,7 @@
   "homepage": "http://github.com/solid/gitter-solid",
   "bugs": "http://github.com/solid/gitter-solid/issues",
   "dependencies": {
+    "@matrix-org/olm": "^3.2.14",
     "cli-color": "^2.0.3",
     "debug": ">=2.6.9",
     "dotenv": "^8.0.0",

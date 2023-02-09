@@ -1,23 +1,86 @@
-import * as sdk from "matrix-js-sdk";// https://github.com/matrix-org/matrix-js-sdk
+import matrixcs, * as sdk from "matrix-js-sdk";// https://github.com/matrix-org/matrix-js-sdk
 import clc from "cli-color"
 import * as readline from 'readline'
 import * as dotenv from 'dotenv';
+import Olm from '@matrix-org/olm';
 
-import { setRoomList } from './src/matrix-utils.mjs'
+import { setRoomList, getAndSaveClientData } from './src/matrix-utils.mjs'
 
 dotenv.config();
 
 const matrixUserId = process.env.MATRIX_USER_ID || "@timbllee:matrix.org";
-const matrixAccessToken = process.env.MATRIX_ACCESS_TOKEN || "syt_dGltYmxsZWU_lCSmPVdmmykTLyUJrZws_1nKivD";
+let matrixAccessToken = process.env.MATRIX_ACCESS_TOKEN || "syt_dGltYmxsZWU_lCSmPVdmmykTLyUJrZws_1nKivD";
 const matrixBaseUrl = process.env.MATRIX_BASE_URL || "http://matrix.org";
+const matrixDeviceId = process.env.MATRIX_DEVICE_ID || (await getAndSaveClientData()).device_id;
 
+global.Olm = Olm;
 
 
 var matrixClient = sdk.createClient({
     baseUrl: matrixBaseUrl,
     accessToken: matrixAccessToken,
     userId: matrixUserId,
+    deviceId: matrixDeviceId,
 });
+
+
+
+matrixClient.initCrypto();
+
+//matrixClient.restoreKeyBackupWithRecoveryKey(matrixClient.encod)
+//matrixClient.restoreKeyBackupWithPassword("engaged-traffic-protector")
+
+setInterval(() => {
+    let verificationRequests = matrixClient.getVerificationRequestsToDeviceInProgress((matrixUserId));
+    console.log(verificationRequests)
+    if (verificationRequests.length > 0) {
+        matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+    }
+
+}, 3000)
+
+matrixClient.once("key.verification.request", (matrixEvent, state) => {
+    console.log("Incoming verification!requ")
+    
+    matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+})
+
+matrixClient.once("m.key.verification.request", (matrixEvent, state) => {
+    console.log("m.Incoming verification!reqy")
+    /*console.log(matrixEvent)
+    console.log(state)*/
+    matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+})
+
+
+
+matrixClient.once("key.verification.ready", (matrixEvent, state) => {
+    console.log("Incoming verificationyeady!")
+
+    matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+})
+
+matrixClient.once("m.key.verification.ready", (matrixEvent, state) => {
+    console.log("m.Incoming verificationreadyy!")
+
+    matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+})
+
+
+matrixClient.once("key.verification.start", (matrixEvent, state) => {
+    console.log("Incoming verification!start")
+   
+    matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+})
+
+matrixClient.once("m.key.verification.start", (matrixEvent, state) => {
+    console.log("m.Incoming verification!start")
+
+    matrixClient.getVerificationRequestsToDeviceInProgress(matrixUserId)[0].accept()
+})
+
+
+
 
 // Data structures
 var roomList = [];
@@ -391,4 +454,8 @@ function fixWidth(str, len) {
     return str;
 }
 
-matrixClient.startClient(numMessagesToShow); // messages for each room.
+matrixClient.startClient(numMessagesToShow).then(() => {
+    console.log("asking for verification!")
+    matrixClient.requestVerification(matrixUserId);
+
+}); // messages for each room.

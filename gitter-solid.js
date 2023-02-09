@@ -9,10 +9,12 @@
 // import { Matrix } from 'matrix-api/Matrix';
 // import { Matrix } from 'matrix-api/Matrix.js';
 
-import * as sdk from "matrix-js-sdk";// https://github.com/matrix-org/matrix-js-sdk
+import matrixcs, * as sdk from "matrix-js-sdk";// https://github.com/matrix-org/matrix-js-sdk
   // API Docs: https://matrix.org/docs/guides/usage-of-the-matrix-js-sdk
 
 import myCrypto from 'crypto'
+import Olm from '@matrix-org/olm';
+
 
 import * as dotenv from 'dotenv'
 import * as $rdf from 'rdflib'
@@ -24,13 +26,16 @@ import * as  readlineSync from 'readline-sync'
 import * as readline from 'readline'
 
 import { show } from "./src/utils.mjs"
-import { setRoomList } from "./src/matrix-utils.mjs";
+import { setRoomList, getAndSaveClientData } from "./src/matrix-utils.mjs";
 
 dotenv.config()
 
 const matrixUserId = process.env.MATRIX_USER_ID || "@timbllee:matrix.org";
-const matrixAccessToken = process.env.MATRIX_ACCESS_TOKEN || "syt_dGltYmxsZWU_lCSmPVdmmykTLyUJrZws_1nKivD";
+let matrixAccessToken = process.env.MATRIX_ACCESS_TOKEN || "syt_dGltYmxsZWU_lCSmPVdmmykTLyUJrZws_1nKivD";
 const matrixBaseUrl = process.env.MATRIX_BASE_URL || "http://matrix.org";
+const matrixDeviceId = process.env.MATRIX_DEVICE_ID || (await getAndSaveClientData()).device_id;
+
+global.Olm = Olm;
 
 
 
@@ -199,12 +204,14 @@ async function processRooms () {
     }
 }
 
-async function initialiseMatrix(callback) {
+
+async function initialiseMatrix() {  
   console.log(matrixAccessToken)
   matrixClient = sdk.createClient({
       baseUrl: matrixBaseUrl,
       accessToken: matrixAccessToken,
       userId: matrixUserId,
+      deviceId: matrixDeviceId,  // Needed for encryption
   });
 
   const client = matrixClient
@@ -221,6 +228,11 @@ async function initialiseMatrix(callback) {
           process.exit(1);
       }
   });
+
+  await new Promise(resolve => setTimeout(resolve, 5000))
+
+
+  await matrixClient.initCrypto();
 
   matrixClient.startClient(numMessagesToShow); // messages for each room.
 
@@ -998,10 +1010,7 @@ async function go () {
   rl.on("line", function (line) {})
   //matrixClient.startClient(numMessagesToShow); // messages for each room.
 
-  return
 
-  console.log('@ testing exit ')
-  process.exit()
 
   var roomIndex = {}
   for (let r = 0; r < rooms.length; r++) {
