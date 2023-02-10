@@ -47,12 +47,15 @@ console.log = (...msgs)=>{
   }
 }
 */
+/**
+ * @see init
+ */
 let command = process.argv[2]
 let targetRoomName = process.argv[3]
 const archiveBaseURI = process.argv[4]
 
-const GITTER = false
-const MATRIX = true
+const GITTER = true
+const MATRIX = false
 
 const numMessagesToShow = 20
 let matrixClient = null
@@ -276,12 +279,37 @@ function oldInitialiseMatrix() {
 }
 
 async function init() {
+  // Which command to use, if not already defined in process.argv
   if(!command) {
     command = readlineSync.question('Command (e.g. create) : ');
   }
-  if(!targetRoomName) {
-    targetRoomName = readlineSync.question('Gitter Room (e.g. solid/chat) : ');
+
+  // Which target room name, if not already defined in process.argv
+  // Matrix currently has a default for all
+  if (MATRIX) {
+    console.log("Matrix API enabled. Defauling to ALL")
+    targetRoomName = TARGET_ROOM_NAME.ALL;
   }
+  else if (GITTER) {
+    if(!targetRoomName) {
+      targetRoomName = readlineSync.question(`Which Gitter Room to target?\n\t${targetRoomNames()}\nSelection: `);
+    }
+    let selectedTarget = Object.keys(TARGET_ROOM_NAME).find((key) => RegExp(TARGET_ROOM_NAME[key], "gi").test(targetRoomName.toLowerCase()));
+    // If the provided target has a name, save that name
+    console.log("selection: " +selectedTarget)
+    if (selectedTarget == TARGET_ROOM_NAME.SINGLE_ROOM || selectedTarget == TARGET_ROOM_NAME.SINGLE_USER) {
+      targetRoomName = targetRoomName;
+    } else {
+      // If it's not a specific name, save the constant
+      targetRoomName = selectedTarget;
+    }
+    console.log("target room name: " + targetRoomName)
+  }
+
+
+
+
+  // If GITTER api is to be used
   if (GITTER) {
     if (!GITTER_TOKEN) {
       GITTER_TOKEN = readlineSync.question('Gitter Token : ');
@@ -289,6 +317,7 @@ async function init() {
     gitter = new Gitter(GITTER_TOKEN)
 
   }
+  // If MATRIX api is to be used
   if (MATRIX) {
     await initialiseMatrix()
   }
@@ -961,6 +990,32 @@ async function loadConfig () {
   return gitterConfig
 }
 
+/**
+ * Constants for possible values of target room name 
+ * This only matters for Gitter. For Matrix,
+ * this script doesn't see any difference between rooms,
+ * and will subsequently default to all
+ */
+const TARGET_ROOM_NAME = {
+  SINGLE_ROOM: ".*\/.*",
+  SINGLE_USER: "@.*",
+  PRIVATE: "private",
+  PUBLIC: "public",
+  DIRECT: "direct",
+  ALL: "all"
+}
+const TARGET_ROOM_NAME_READABLE = {
+  [TARGET_ROOM_NAME.SINGLE_ROOM]: "solid/chat (single gitter room)",
+  [TARGET_ROOM_NAME.SINGLE_USER]: "@joeblogs",
+  [TARGET_ROOM_NAME.PRIVATE]: TARGET_ROOM_NAME.PRIVATE,
+  [TARGET_ROOM_NAME.PUBLIC]: TARGET_ROOM_NAME.PUBLIC,
+  [TARGET_ROOM_NAME.DIRECT]: TARGET_ROOM_NAME.DIRECT,
+  [TARGET_ROOM_NAME.ALL]: TARGET_ROOM_NAME.ALL,
+}
+function targetRoomNames() {
+  return Object.values(TARGET_ROOM_NAME_READABLE).join("\n\t");
+}
+
 //////////////////////////////////////////////////////////////////
 async function go () {
   await init();
@@ -1067,13 +1122,13 @@ async function go () {
   console.log('targetRoomName 1 ' + targetRoomName)
 
   if (targetRoomName) {
-    if (targetRoomName === 'direct') {
+    if (targetRoomName === TARGET_ROOM_NAME.DIRECT) {
       roomsToDo = oneToOnes
-    } else if (targetRoomName === 'private') {
+    } else if (targetRoomName === TARGET_ROOM_NAME.PRIVATE) {
       roomsToDo = privateRooms
-    } else if (targetRoomName === 'public') {
+    } else if (targetRoomName === TARGET_ROOM_NAME.PUBLIC) {
       roomsToDo = publicRooms
-    } else if (targetRoomName === 'all') {
+    } else if (targetRoomName === TARGET_ROOM_NAME.ALL) {
       roomsToDo = oneToOnes.concat(privateRooms).concat(publicRooms)
     } else {
       console.log(`targetRoomName 2 "${targetRoomName}"`)
